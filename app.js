@@ -1,84 +1,52 @@
-/**
- * Alvin Naufal
- */
-const http = require("http");
-const fs = require("fs");
-require("dotenv").config(); // load .env file
+require("dotenv").config();
+const express = require("express");
+const app = express();
+const path = require("path");
+const morgan = require("morgan");
+const cors = require("cors");
 
-const hostname = process.env.HOST;
-const port = process.env.PORT;
+const api = require("./routes");
 
-let data = [
-    {
-        tugas: "tugas MTK 1",
-        siswa: "Siswa 1",
-    },
-    {
-        tugas: "tugas MTK 2",
-        siswa: "Siswa 2",
-    },
-    {
-        tugas: "tugas MTK 3",
-        siswa: "Siswa 3",
-    },
-];
+app.use(morgan("dev"));
+app.use(cors());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static(__dirname + "/views"));
 
+app.set("views", path.join(__dirname, "views"));
+app.set("view engine", "ejs");
 
-/** Home */
-const getHome = (req, res, reqUrl) => {
-    fs.createReadStream("./views/index.html").pipe(res);
-    return;
-}
-
-const getTugas = (req, res, reqUrl) => {
-    res.writeHead(200);
-    res.write(JSON.stringify({
-        message: "GET request to /tugas",
-        data: data
-    }));
-    res.end();
-}
-
-const postTugas = (req, res, reqUrl) => {
-    req.setEncoding("utf8");
-    
-    req.on("data", (chunk) => {
-        const params = new URLSearchParams(chunk);
-        const newData = {
-            tugas: params.get("tugas"),
-            siswa: params.get("siswa"),
-        };
-
-        data.unshift(newData);
-
-        res.writeHead(200);
-        res.write(JSON.stringify({
-            message: "POST request to /tugas",
-            data: newData,
-        }));
-        res.end();
+app.get("/", (req, res) => {
+    res.render("index", {
+        page: "home",
+        props: {}
     });
-}
-
-const noResponse = (req, res) => {
-    res.writeHead(404);
-    res.write("Error not found..\n");
-    res.end();
-}
-
-http.createServer((req, res) => {
-    const router = {
-        "GET/": getHome,
-        "GET/tugas": getTugas,
-        "POST/tugas": postTugas,
-        default: noResponse,
-    };
-    let reqUrl = new URL(req.url, `http://${hostname}`)
-    console.log(reqUrl);
-
-    let selectRoute =
-        router[req.method + reqUrl.pathname] || router["default"]
-    selectRoute(req, res, reqUrl);
-}).listen(port, () => {
-    console.log(`Server running at http://${hostname}:${port}/`);
 });
+app.get("/article/:id", (req, res) => {
+    res.render("index", {
+        page: "detailArticle",
+        props: {
+            id: req.params.id,
+            isProduct: true
+        }
+    });
+});
+app.get("/product", (req, res) => {
+    res.render("index", {
+        page: "product",
+        props: {
+            isProduct: true
+        },
+    });
+});
+
+app.use("/api/v1", api);
+
+const port = process.env.PORT;
+app.listen(port, () => {
+    /* eslint-disable no-console */
+    console.log(`Listening: http://localhost:${port}`);
+    /* eslint-enable no-console */
+});
+
+module.exports = app;
